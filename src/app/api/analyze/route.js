@@ -89,10 +89,13 @@ export async function POST(req) {
     try {
       text = await extractTextWithPdfParse(buffer);
     } catch (error) {
+      console.error("Error extracting resume text from PDF:", error);
       return NextResponse.json(
         {
           error:
-            "Could not read this PDF. Please upload a valid text-based resume PDF.",
+            process.env.NODE_ENV === "production"
+              ? "Could not read this PDF on the server. Please try a text-based PDF or check the deployment logs for the PDF extraction error."
+              : `Could not read this PDF: ${error.message}`,
         },
         { status: 400 }
       );

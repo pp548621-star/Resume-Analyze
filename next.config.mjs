@@ -2,7 +2,6 @@
 const nextConfig = {
   /* config options here */
   reactCompiler: true,
-  serverExternalPackages: ["pdf-parse", "tesseract.js", "tesseract.js-core"],
   outputFileTracingIncludes: {
     "/api/analyze": [
       "./node_modules/tesseract.js/src/worker-script/node/index.js",
