@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
-import { PDFParse } from "pdf-parse";
-import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-const require = createRequire(import.meta.url);
 
 // Initialize Groq client
 const groq = new Groq({
@@ -16,6 +12,7 @@ const groq = new Groq({
 });
 
 async function extractTextWithPdfParse(buffer) {
+  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: buffer });
 
   try {
@@ -27,7 +24,14 @@ async function extractTextWithPdfParse(buffer) {
 }
 
 async function extractTextWithOcr(buffer) {
+  if (process.env.ENABLE_LOCAL_OCR !== "true") {
+    return "";
+  }
+
   const { createWorker } = await import("tesseract.js");
+  const { createRequire } = await import("node:module");
+  const require = createRequire(import.meta.url);
+  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: buffer });
   const worker = await createWorker("eng", 1, {
     workerPath: require.resolve("tesseract.js/src/worker-script/node/index.js"),
@@ -112,7 +116,9 @@ export async function POST(req) {
         return NextResponse.json(
           {
             error:
-              "Could not extract enough resume text. Please upload a clearer PDF or a text-based resume PDF.",
+              process.env.ENABLE_LOCAL_OCR === "true"
+                ? "Could not extract enough resume text. Please upload a clearer PDF or a text-based resume PDF."
+                : "This PDF appears to be scanned or image-only. Please upload a text-based PDF, or enable OCR on the server.",
           },
           { status: 400 }
         );
