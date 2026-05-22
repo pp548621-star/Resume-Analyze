@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -11,8 +13,25 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
+function ensurePdfJsGlobals() {
+  if (!globalThis.DOMMatrix) {
+    const require = createRequire(import.meta.url);
+    const { DOMMatrix } = require("@napi-rs/canvas/geometry");
+
+    globalThis.DOMMatrix = DOMMatrix;
+  }
+}
+
+function getPdfWorkerUrl() {
+  return pathToFileURL(
+    path.join(process.cwd(), "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs")
+  ).href;
+}
+
 async function extractTextWithPdfParse(buffer) {
+  ensurePdfJsGlobals();
   const { PDFParse } = await import("pdf-parse");
+  PDFParse.setWorker(getPdfWorkerUrl());
   const parser = new PDFParse({ data: buffer });
 
   try {
@@ -29,9 +48,10 @@ async function extractTextWithOcr(buffer) {
   }
 
   const { createWorker } = await import("tesseract.js");
-  const { createRequire } = await import("node:module");
   const require = createRequire(import.meta.url);
+  ensurePdfJsGlobals();
   const { PDFParse } = await import("pdf-parse");
+  PDFParse.setWorker(getPdfWorkerUrl());
   const parser = new PDFParse({ data: buffer });
   const worker = await createWorker("eng", 1, {
     workerPath: require.resolve("tesseract.js/src/worker-script/node/index.js"),
