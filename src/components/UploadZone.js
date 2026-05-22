@@ -66,7 +66,10 @@ export function UploadZone({ onAnalyze }) {
         try {
           errorMessage = JSON.parse(responseText)?.error || errorMessage
         } catch {
-          if (responseText) {
+          if (responseText.trim().startsWith("<!DOCTYPE")) {
+            errorMessage =
+              "The deployed server crashed while analyzing this resume. Please check the deployment logs for /api/analyze."
+          } else if (responseText) {
             errorMessage = responseText.slice(0, 160)
           }
         }

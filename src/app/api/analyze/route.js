@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { PDFParse } from "pdf-parse";
-import { createWorker } from "tesseract.js";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
@@ -28,6 +27,7 @@ async function extractTextWithPdfParse(buffer) {
 }
 
 async function extractTextWithOcr(buffer) {
+  const { createWorker } = await import("tesseract.js");
   const parser = new PDFParse({ data: buffer });
   const worker = await createWorker("eng", 1, {
     workerPath: require.resolve("tesseract.js/src/worker-script/node/index.js"),
