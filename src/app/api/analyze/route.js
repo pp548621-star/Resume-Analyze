@@ -93,9 +93,7 @@ export async function POST(req) {
       return NextResponse.json(
         {
           error:
-            process.env.NODE_ENV === "production"
-              ? "Could not read this PDF on the server. Please try a text-based PDF or check the deployment logs for the PDF extraction error."
-              : `Could not read this PDF: ${error.message}`,
+            `Could not read this PDF on the server: ${error.message}`,
         },
         { status: 400 }
       );
