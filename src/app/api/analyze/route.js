@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { PDFParse } from "pdf-parse";
 import { createWorker } from "tesseract.js";
+import { createRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
+const require = createRequire(import.meta.url);
 
 // Initialize Groq client
 const groq = new Groq({
@@ -23,15 +30,9 @@ async function extractTextWithPdfParse(buffer) {
 async function extractTextWithOcr(buffer) {
   const parser = new PDFParse({ data: buffer });
   const worker = await createWorker("eng", 1, {
-    workerPath: path.join(
-      process.cwd(),
-      "node_modules/tesseract.js/src/worker-script/node/index.js"
-    ),
-    corePath: path.join(
-      process.cwd(),
-      "node_modules/tesseract.js-core/tesseract-core-simd.wasm.js"
-    ),
-    cachePath: path.join(process.cwd(), ".next/cache/tesseract"),
+    workerPath: require.resolve("tesseract.js/src/worker-script/node/index.js"),
+    corePath: require.resolve("tesseract.js-core/tesseract-core-simd.wasm.js"),
+    cachePath: path.join(os.tmpdir(), "resumeai-tesseract"),
   });
 
   try {
@@ -94,7 +95,18 @@ export async function POST(req) {
     }
 
     if (text.length < 100) {
-      text = await extractTextWithOcr(buffer);
+      try {
+        text = await extractTextWithOcr(buffer);
+      } catch (error) {
+        console.error("Error extracting resume text with OCR:", error);
+        return NextResponse.json(
+          {
+            error:
+              "Could not OCR this PDF on the server. Please upload a text-based PDF or try again with a clearer file.",
+          },
+          { status: 400 }
+        );
+      }
 
       if (text.length < 100) {
         return NextResponse.json(
@@ -105,6 +117,16 @@ export async function POST(req) {
           { status: 400 }
         );
       }
+    }
+
+    if (!process.env.GROQ_API_KEY) {
+      return NextResponse.json(
+        {
+          error:
+            "Groq API key is not configured on the server. Add GROQ_API_KEY in your deployment environment variables.",
+        },
+        { status: 500 }
+      );
     }
 
     // Prepare prompt for Groq

@@ -60,8 +60,18 @@ export function UploadZone({ onAnalyze }) {
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null)
-        throw new Error(errorData?.error || "Failed to analyze resume")
+        const responseText = await response.text()
+        let errorMessage = "Failed to analyze resume"
+
+        try {
+          errorMessage = JSON.parse(responseText)?.error || errorMessage
+        } catch {
+          if (responseText) {
+            errorMessage = responseText.slice(0, 160)
+          }
+        }
+
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
