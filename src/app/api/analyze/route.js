@@ -184,7 +184,7 @@ ${text.substring(0, 5000)}
     // Call Groq API
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
-      model: "llama-3.3-70b-versatile",
+      model: "qwen/qwen3.8-27b",
       temperature: 0.2,
       response_format: { type: "json_object" },
     });
@@ -196,7 +196,13 @@ ${text.substring(0, 5000)}
     }
 
     // Parse the JSON response
-    const analysis = JSON.parse(aiResponse);
+    let cleanedResponse = aiResponse.trim();
+    if (cleanedResponse.startsWith("```json")) {
+      cleanedResponse = cleanedResponse.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
+    } else if (cleanedResponse.startsWith("```")) {
+      cleanedResponse = cleanedResponse.replace(/^```\n?/, "").replace(/\n?```$/, "").trim();
+    }
+    const analysis = JSON.parse(cleanedResponse);
 
     return NextResponse.json(analysis);
 
